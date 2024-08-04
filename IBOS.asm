@@ -1002,8 +1002,12 @@ ENDIF
 {
     LDX #lo(CmdRef):LDY #hi(CmdRef)
     RTS
-		
+
+IF IBOS_VERSION < 127
 		EQUS &20								;Number of * commands. Note SRWE & SRWP are not used SFTODO: I'm not sure this is entirely true - the code at SearchKeywordTable seems to use the 0 byte at the end of CmdTbl to know when to stop, and if I type "*SRWE" on an emulated IBOS 1.20 machine I get a "Bad id" error, suggesting the command is recognised (if not necessarily useful). It is possible some *other* code does use this, I'm *guessing* the *HELP display code uses this in order to keep SRWE and SRWP "secret" (but I haven't looked yet).
+ELSE
+     EQUB &22
+ENDIF
 		ASSERT P% = CmdRef + KeywordTableOffset
 		EQUW CmdTbl							;Start of * command table
 		ASSERT P% = CmdRef + ParameterTableOffset
@@ -1055,6 +1059,9 @@ ENDIF
 		EQUB &00
 
 ;Lookup table for recognised * command parameters
+; SF: Because the first n entries here pair up with the command table and the re-used tokens
+; follow immediately, the entire table has to be adjusted if new * commands are added.
+IF IBOS_VERSION < 127
 .CmdParTbl	EQUS &09, "(", &A6, "(R))/", &A1					;Parameter &80 for *ALARM:		'((=<TIME>(R))/ON/OFF/?)'
 		EQUS &04, "(" ,&A7, ")"						;Parameter &81 for *CALENDAR:		'(<DATE>)'
 		EQUS &07, "((=)", &A7, ")"						;Parameter &82 for *DATE:		'((=)<DATE>)'
@@ -1075,18 +1082,18 @@ ENDIF
 		EQUS &03, "(", &A1							;Parameter &91 for *TUBE:		'(ON/OFF/?)'
 		EQUS &03, "<", &AA							;Parameter &92 for *GOIO:		'<addr>'
 		EQUS &01								;Parameter &93 for *NLE:
-		EQUS &06, "<fsp>"							;Parameter &94: 			'<fsp>'
-		EQUS &04, &94, " ", &AC						;Parameter &95: 			'<fsp> <len>'
-		EQUS &02, &94							;Parameter &96:			'<fsp>'
-		EQUS &02, &94							;Parameter &97:			'<fsp>'
-		EQUS &06, &A5, "(,", &A5, &AD						;Parameter &98:			'<id>(,<id>)...'
-		EQUS &02, &98							;Parameter &99:			'<id>(,<id>)...'
-		EQUS &02, &98							;Parameter &9A:			'<id>(,<id>)...'
-		EQUS &04, "(", &98, &A0						;Parameter &9B:			'(<id>(,<id>).../?)'
-		EQUS &05, &94, &AB, &A3, &A2						;Parameter &9C:			'<fsp> <sraddr> (<id>) (Q)(I)'
-		EQUS &05, &94, &AB, &A9, &A3						;Parameter &9D:			'<fsp> (<end>/+<len>) (<id>) (Q)'
-		EQUS &06, "<", &AA, &A9, &AB, &A4					;Parameter &9E:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
-		EQUS &02, &9E							;Parameter &9F:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
+		EQUS &06, "<fsp>"							;Parameter &94 for *APPEND: 			'<fsp>'
+		EQUS &04, &94, " ", &AC						;Parameter &95 for *CREATE: 			'<fsp> <len>'
+		EQUS &02, &94							;Parameter &96 for *PRINT:			'<fsp>'
+		EQUS &02, &94							;Parameter &97 for *SPOOLON:			'<fsp>'
+		EQUS &06, &A5, "(,", &A5, &AD						;Parameter &98 for *SRWIPE:			'<id>(,<id>)...'
+		EQUS &02, &98							;Parameter &99 for *SRDATA:			'<id>(,<id>)...'
+		EQUS &02, &98							;Parameter &9A for *SRROM:			'<id>(,<id>)...'
+		EQUS &04, "(", &98, &A0						;Parameter &9B for *SRSET:			'(<id>(,<id>).../?)'
+		EQUS &05, &94, &AB, &A3, &A2						;Parameter &9C for *SRLOAD:			'<fsp> <sraddr> (<id>) (Q)(I)'
+		EQUS &05, &94, &AB, &A9, &A3						;Parameter &9D for *SRSAVE:			'<fsp> (<end>/+<len>) (<id>) (Q)'
+		EQUS &06, "<", &AA, &A9, &AB, &A4					;Parameter &9E for *SRREAD:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
+		EQUS &02, &9E							;Parameter &9F for *SRWRITE:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
 		EQUS &04, "/?)"							;Parameter &A0:			'/?)'
 		EQUS &08, "ON/OFF", &A0						;Parameter &A1:			'ON/OFF/?)'
 		EQUS &04, "(I)"							;Parameter &A2:			'(I)'
@@ -1103,6 +1110,58 @@ ENDIF
 		EQUS &05, ")..."							;Parameter &AD:			')...'
 		EQUS &05, "(<0-"							;Parameter &AE:			'(<0-'
 		EQUS &04, &AE, "4>"							;Parameter &AF:			'(<0-4>'
+ELSE
+.CmdParTbl	EQUS &09, "(", &A8, "(R))/", &A3					;Parameter &80 for *ALARM:		'((=<TIME>(R))/ON/OFF/?)'
+		EQUS &04, "(" ,&A9, ")"						;Parameter &81 for *CALENDAR:		'(<DATE>)'
+		EQUS &07, "((=)", &A9, ")"						;Parameter &82 for *DATE:		'((=)<DATE>)'
+		EQUS &03, &A8, ")"							;Parameter &83 for *TIME:		'(=<TIME>)'
+		EQUS &06, &85, "(,", &AA,&AF						;Parameter &84 for *CONFIGURE:	'(<par>)(,<par>)...'
+		EQUS &04, "(", &AA, ")"						;Parameter &85 for *STATUS:		'(<par>)'
+		EQUS &02, &94							;Parameter &86 for *CSAVE:		'<fsp>'
+		EQUS &02, &94							;Parameter &87 for *CLOAD:		'<fsp>'
+		EQUS &08, "(<cmd>", &A2						;Parameter &88 for *BOOT:		'(<cmd>/?)'
+		EQUS &06, &B1, "/#" , &98, &A2					;Parameter &89 for *BUFFER:		'(<0-4>/#<id>(,<id>).../?)'
+		EQUS &03, "(", &A3							;Parameter &8A for *PURGE:		'(ON/OFF/?)'
+		EQUS &03, &98,&A4							;Parameter &8B for *INSERT:		'<id>(,<id>)...(I)'
+		EQUS &03, &98,&A4							;Parameter &8C for *UNPLUG:		'<id>(,<id>)...(I)'
+		EQUS &01								;Parameter &8D for *ROMS:
+		EQUS &03, &B1,&A2							;Parameter &8E for *OSMODE:		'(<0-4>/?)'
+		EQUS &07, "(", &B0, "1>", &A2, ")"					;Parameter &8F for *SHADOW:		'((<0-1>/?))'
+		EQUS &03, "(", &A3							;Parameter &90 for *SHX:		'(ON/OFF/?)'
+		EQUS &03, "(", &A3							;Parameter &91 for *TUBE:		'(ON/OFF/?)'
+		EQUS &03, "<", &AC							;Parameter &92 for *GOIO:		'<addr>'
+		EQUS &01								;Parameter &93 for *NLE:
+		EQUS &06, "<fsp>"							;Parameter &94 for *APPEND: 			'<fsp>'
+		EQUS &04, &94, " ", &AE						;Parameter &95 for *CREATE: 			'<fsp> <len>'
+		EQUS &02, &94							;Parameter &96 for *PRINT:			'<fsp>'
+		EQUS &02, &94							;Parameter &97 for *SPOOLON:			'<fsp>'
+		EQUS &06, &A7, "(,", &A7, &AF						;Parameter &98 for *SRWIPE:			'<id>(,<id>)...'
+		EQUS &02, &98							;Parameter &99 for *SRDATA:			'<id>(,<id>)...'
+		EQUS &02, &98							;Parameter &9A for *SRROM:			'<id>(,<id>)...'
+		EQUS &04, "(", &98, &A2						;Parameter &9B for *SRSET:			'(<id>(,<id>).../?)'
+		EQUS &05, &94, &AD, &A5, &A4						;Parameter &9C for *SRLOAD:			'<fsp> <sraddr> (<id>) (Q)(I)'
+		EQUS &05, &94, &AD, &AB, &A5						;Parameter &9D for *SRSAVE:			'<fsp> (<end>/+<len>) (<id>) (Q)'
+		EQUS &06, "<", &AC, &AB, &AD, &A6					;Parameter &9E for *SRREAD:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
+		EQUS &02, &9E							;Parameter &9F for *SRWRITE:			'<addr> (<end>/+<len>) <sraddr> (<id>)'
+		EQUS &02, &98 ;Parameter &A0 for *TODO: <id>(,<id>)..."
+		EQUS &02, &98 ;Parameter &A1 for *TODO: <id>(,<id>)..."
+		EQUS &04, "/?)"							;Parameter &A2:			'/?)'
+		EQUS &08, "ON/OFF", &A2						;Parameter &A3:			'ON/OFF/?)'
+		EQUS &04, "(I)"							;Parameter &A4:			'(I)'
+		EQUS &06, &A6," (Q)"						;Parameter &A5:			' (<id>) (Q)'
+		EQUS &05, " (", &A7, ")"						;Parameter &A6:			' (<id>)'
+		EQUS &05, "<id>"							;Parameter &A7:			'<id>'
+		EQUS &09, "(=<time>"						;Parameter &A8:			'(=<time>'
+		EQUS &07, "<date>"							;Parameter &A9:			'<date>'
+		EQUS &06, "<par>"							;Parameter &AA:			'<par>'
+		EQUS &0C, " (<end>/+", &AE, ")"					;Parameter &AB:			' (<end>/+<len>)'
+		EQUS &06, "addr>"							;Parameter &AC:			'addr>'
+		EQUS &06, " <sr", &AC						;Parameter &AD:			' <sraddr>'
+		EQUS &06, "<len>"							;Parameter &AE:			'<len>'
+		EQUS &05, ")..."							;Parameter &AF:			')...'
+		EQUS &05, "(<0-"							;Parameter &B0:			'(<0-'
+		EQUS &04, &B0, "4>"							;Parameter &B1:			'(<0-4>'
+ENDIF
 
 ;lookup table for start address of recognised * commands
 .^CmdExTbl		EQUW alarm-1							;address of *ALARM command
@@ -1251,7 +1310,11 @@ ENDIF
     EQUW CmdRef:EQUB &00,&03							;&04 x IBOS/RTC Sub options - from offset &00
     EQUW CmdRef:EQUB &04,&13							;&10 x IBOS/SYS Sub options - from offset &04
     EQUW CmdRef:EQUB &14,&17							;&04 x IBOS/FSX Sub options - from offset &14
+IF IBOS_VERSION <= 126
     EQUW CmdRef:EQUB &18,&1F							;&08 x IBOS/SRAM Sub options - from offset &18
+ELSE
+    EQUW CmdRef:EQUB &18,&21							;&08 x IBOS/SRAM Sub options - from offset &18
+ENDIF
     EQUW ibosRef:EQUB &00,&03							;&04 x IBOS Options - from offset &00
     EQUW ConfRef:EQUB &00,&10							;&11 x CONFIGURE Parameters - from offset &00
 
@@ -9096,6 +9159,7 @@ OswordSoundBlockSize = P% - OswordSoundBlock
 ;Start of CALENDAR * Command
 .calend
 {
+IF IBOS_VERSION < 127 ; SFTODO HACK
 DayOfWeek = prvA ; this is also the row number
 CellIndex = prvB ; current element in the 42-element structure generated by GenerateInternalCalendar
 Column = prvC
@@ -9158,6 +9222,7 @@ Column = prvC
     BCC RowLoop
     PRVDIS
     JMP ExitAndClaimServiceCall
+ENDIF
 }
 
 {
